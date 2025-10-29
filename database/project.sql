@@ -117,25 +117,49 @@ CREATE PROCEDURE issue_book(IN p_member_id INT, IN p_book_id INT, IN p_due_days 
 BEGIN
     DECLARE available INT;
     DECLARE reservation_exists INT DEFAULT 0;
+    
     -- Check available copies
     SELECT available_copies INTO available FROM books WHERE book_id = p_book_id;
-    -- Check if this member has an active reservation for this book
-    SELECT COUNT(*) INTO reservation_exists 
-    FROM reservations 
-    WHERE member_id = p_member_id 
-    AND book_id = p_book_id 
-    AND status = 'Active';
-    -- Issue the book
-    INSERT INTO loans (member_id, book_id, due_date)
-    VALUES (p_member_id, p_book_id, DATE_ADD(CURRENT_DATE, INTERVAL p_due_days DAY));
-    -- If reservation exists, update status to 'Completed'
-    IF reservation_exists > 0 THEN
-        UPDATE reservations 
-        SET status = 'Completed' 
+    
+    -- Only proceed if book is available
+    IF available > 0 THEN
+        -- Check if this member has an active reservation for this book
+        SELECT COUNT(*) INTO reservation_exists 
+        FROM reservations 
         WHERE member_id = p_member_id 
         AND book_id = p_book_id 
         AND status = 'Active';
+        
+        -- Issue the book
+        INSERT INTO loans (member_id, book_id, due_date)
+        VALUES (p_member_id, p_book_id, DATE_ADD(CURRENT_DATE, INTERVAL p_due_days DAY));
+        
+        -- If reservation exists, update status to 'Completed'
+        IF reservation_exists > 0 THEN
+            UPDATE reservations 
+            SET status = 'Completed' 
+            WHERE member_id = p_member_id 
+            AND book_id = p_book_id 
+            AND status = 'Active';
+        END IF;
+        
+        -- Also update any other active reservations for this book to 'Cancelled' if no more copies available
+        IF available = 1 THEN
+            UPDATE reservations 
+            SET status = 'Cancelled' 
+            WHERE book_id = p_book_id 
+            AND status = 'Active'
+            AND member_id != p_member_id;
+        END IF;
+    ELSE
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Book is not available for issue';
     END IF;
+END$$
+
+-- Return Book Procedure
+CREATE PROCEDURE return_book(IN p_loan_id INT)
+BEGIN
+    UPDATE loans SET return_date = CURRENT_DATE WHERE loan_id = p_loan_id;
 END$$
 
 -- Return Book Procedure
