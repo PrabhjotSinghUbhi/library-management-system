@@ -116,13 +116,26 @@ DELIMITER $$
 CREATE PROCEDURE issue_book(IN p_member_id INT, IN p_book_id INT, IN p_due_days INT)
 BEGIN
     DECLARE available INT;
-
+    DECLARE reservation_exists INT DEFAULT 0;
     -- Check available copies
     SELECT available_copies INTO available FROM books WHERE book_id = p_book_id;
-
+    -- Check if this member has an active reservation for this book
+    SELECT COUNT(*) INTO reservation_exists 
+    FROM reservations 
+    WHERE member_id = p_member_id 
+    AND book_id = p_book_id 
+    AND status = 'Active';
     -- Issue the book
     INSERT INTO loans (member_id, book_id, due_date)
     VALUES (p_member_id, p_book_id, DATE_ADD(CURRENT_DATE, INTERVAL p_due_days DAY));
+    -- If reservation exists, update status to 'Completed'
+    IF reservation_exists > 0 THEN
+        UPDATE reservations 
+        SET status = 'Completed' 
+        WHERE member_id = p_member_id 
+        AND book_id = p_book_id 
+        AND status = 'Active';
+    END IF;
 END$$
 
 -- Return Book Procedure

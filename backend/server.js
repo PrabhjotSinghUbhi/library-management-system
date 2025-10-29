@@ -94,31 +94,6 @@ app.get("/fines", async (req, res) => {
 // POST REQUESTS (CREATE OPERATIONS)
 // =================================
 
-// Add new member
-app.post("/members", async (req, res) => {
-      console.log("POST /members - Processing request...");
-      console.log("Body data:", req.body);
-      console.log("Query data:", req.query);
-      
-      // Accept data from either body or query parameters
-      const name = req.body?.name || req.query?.name;
-      const email = req.body?.email || req.query?.email;
-      const phone = req.body?.phone || req.query?.phone;
-      const address = req.body?.address || req.query?.address;
-      
-      console.log("Final values:", { name, email, phone, address });
-      try {
-            const [result] = await pool.query(
-                  "INSERT INTO members (name, email, phone, address) VALUES (?, ?, ?, ?)",
-                  [name, email, phone, address]
-            );
-            res.json({ message: "Member added", member_id: result.insertId });
-      } catch (err) {
-            console.error(err);
-            res.status(500).json({ error: "Server error" });
-      }
-});
-
 // Add new book
 app.post("/books", async (req, res) => {
       console.log("POST /books - Processing request...");
